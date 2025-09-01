@@ -1,0 +1,14 @@
+name = "canvas-cf-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat", "experimental"]
+
+# No longer need WASM rules
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[env.production]
+name = "canvas-cf-worker"
