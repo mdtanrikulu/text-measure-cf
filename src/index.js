@@ -1,47 +1,22 @@
 // Simplified - no longer need CanvasKit polyfills
 
 import opentype from 'opentype.js';
+import { satoshiBoldBase64 } from './satoshi-font.js';
 
 let loadedFont = null;
 
 async function initializeFont() {
   if (!loadedFont) {
     try {
-      console.log('Loading Noto Sans font for accurate text measurement...');
-      // Using Google Fonts API to get a font that supports emojis and international text
-      // First try to get the actual font URL from Google Fonts CSS
-      const fontFamilyUrl = 'https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400&display=swap';
-      const cssResponse = await fetch(fontFamilyUrl, {
-        headers: {
-          // Use an older browser user agent to get WOFF format instead of WOFF2
-          'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1'
-        }
-      });
+      console.log('Loading Satoshi-Bold font for accurate text measurement...');
       
-      if (!cssResponse.ok) {
-        throw new Error(`Failed to fetch font CSS: ${cssResponse.status}`);
-      }
-      
-      const cssText = await cssResponse.text();
-      const urlMatch = cssText.match(/url\(([^)]+)\)/);
-      
-      if (!urlMatch) {
-        throw new Error('Could not extract font URL from CSS');
-      }
-      
-      const fontUrl = urlMatch[1].replace(/['"]/g, ''); // Remove quotes
-      
-      const response = await fetch(fontUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch font: ${response.status}`);
-      }
-      
-      const buffer = await response.arrayBuffer();
+      // Use embedded base64 font data
+      const buffer = Uint8Array.from(atob(satoshiBoldBase64), c => c.charCodeAt(0)).buffer;
       loadedFont = opentype.parse(buffer);
       
-      console.log(`Font loaded: ${loadedFont.names.fontFamily?.en || 'Unknown'}`);
+      console.log(`✅ Font loaded: ${loadedFont.names.fontFamily?.en || 'Unknown'}`);
     } catch (error) {
-      console.warn('Failed to load OpenType font, falling back to mathematical approximation:', error.message);
+      console.warn('Failed to load Satoshi-Bold font, falling back to mathematical approximation:', error.message);
       loadedFont = null;
     }
   }
@@ -162,7 +137,7 @@ async function calculateFontSize(text, maxWidth, maxHeight = null, minFontSize =
         (code >= 0x2700 && code <= 0x27BF)      // Dingbats
       );
     });
-    const safetyMargin = hasIntlChars ? 0.85 : 0.95;
+    const safetyMargin = 0.95;
     const safeWidth = maxWidth * safetyMargin;
     
     console.log(`Font size ${fontSize}: measured=${metrics.width.toFixed(1)}, safeWidth=${safeWidth.toFixed(1)}, maxWidth=${maxWidth.toFixed(1)}, hasIntl=${hasIntlChars}`);
@@ -185,8 +160,8 @@ async function createImageWithTextAndBackground(options = {}) {
 
 async function createDynamicSVGImage(options = {}) {
   const {
-    width = 800,
-    height = 600,
+    width = 518,
+    height = 518,
     text = 'Hello World',
     textColor = [255, 255, 255, 1],
     backgroundColor = [255, 255, 255, 1],
@@ -237,7 +212,7 @@ async function createDynamicSVGImage(options = {}) {
     metrics = await measureTextAccurate(text, fontSize);
   }
 
-  // text at bottom center
+  // Text at bottom center
   let finalTextX, finalTextY;
   let textAnchor = 'middle';
   let dominantBaseline = 'alphabetic';
@@ -262,7 +237,23 @@ async function createDynamicSVGImage(options = {}) {
   // Create background element with gradient or solid color
   let backgroundElement = '';
   if (backgroundImageUrl) {
-    backgroundElement = `<image href="${backgroundImageUrl}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`;
+    try {
+      // Fetch the image and convert to base64 for SVG embedding
+      const imageResponse = await fetch(backgroundImageUrl);
+      if (imageResponse.ok) {
+        const imageBuffer = await imageResponse.arrayBuffer();
+        const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+        const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+        const dataUrl = `data:${contentType};base64,${imageBase64}`;
+        backgroundElement = `<image href="${dataUrl}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`;
+      } else {
+        console.warn(`Failed to fetch background image: ${imageResponse.status}`);
+        backgroundElement = `<rect width="${width}" height="${height}" fill="rgb(${backgroundColor[0]}, ${backgroundColor[1]}, ${backgroundColor[2]})"/>`;
+      }
+    } catch (error) {
+      console.warn('Error fetching background image:', error);
+      backgroundElement = `<rect width="${width}" height="${height}" fill="rgb(${backgroundColor[0]}, ${backgroundColor[1]}, ${backgroundColor[2]})"/>`;
+    }
   } else if (useGradient) {
     const gradientStartRGB = `rgb(${gradientStart[0]}, ${gradientStart[1]}, ${gradientStart[2]})`;
     const gradientEndRGB = `rgb(${gradientEnd[0]}, ${gradientEnd[1]}, ${gradientEnd[2]})`;
@@ -340,6 +331,7 @@ export default {
             console.error('Failed to load demo HTML:', error);
           }
         }
+
         
         return new Response(`
 🎨 OpenType.js SVG Generator API

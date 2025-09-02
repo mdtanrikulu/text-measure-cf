@@ -10,5 +10,10 @@ type = "Text"
 globs = ["**/*.html"]
 fallthrough = true
 
+[[rules]]
+type = "Data"
+globs = ["assets/**/*.ttf"]
+fallthrough = true
+
 [env.production]
 name = "canvas-cf-worker"

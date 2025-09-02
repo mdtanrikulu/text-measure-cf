@@ -302,11 +302,11 @@ export const demoHTML = `<!DOCTYPE html>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="width">Width (px)</label>
-                        <input type="number" id="width" value="500" min="100" max="1200">
+                        <input type="number" id="width" value="518" min="100" max="1200">
                     </div>
                     <div class="form-group">
                         <label for="height">Height (px)</label>
-                        <input type="number" id="height" value="500" min="100" max="800">
+                        <input type="number" id="height" value="518" min="100" max="800">
                     </div>
                 </div>
 
@@ -475,10 +475,8 @@ export const demoHTML = `<!DOCTYPE html>
             ];
             setText(randomTexts[Math.floor(Math.random() * randomTexts.length)]);
 
-            const widths = [400, 500, 600, 700, 800];
-            const heights = [300, 400, 500, 600];
-            document.getElementById('width').value = widths[Math.floor(Math.random() * widths.length)];
-            document.getElementById('height').value = heights[Math.floor(Math.random() * heights.length)];
+            document.getElementById('width').value = 518;
+            document.getElementById('height').value = 518;
 
             const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
             const bgColors = ['#2C3E50', '#8E44AD', '#E74C3C', '#F39C12', '#27AE60', '#3498DB', '#E67E22'];
@@ -517,8 +515,8 @@ export const demoHTML = `<!DOCTYPE html>
             const gradientStyle = document.getElementById('gradientStyle').value;
             const data = {
                 text: document.getElementById('text').value,
-                width: parseInt(document.getElementById('width').value) || 500,
-                height: parseInt(document.getElementById('height').value) || 500,
+                width: parseInt(document.getElementById('width').value) || 518,
+                height: parseInt(document.getElementById('height').value) || 518,
                 backgroundImageUrl: document.getElementById('backgroundImageUrl').value || null,
                 textColor: parseColor(document.getElementById('textColor').value),
                 gradientStart: parseColor(document.getElementById('gradientStart').value),
