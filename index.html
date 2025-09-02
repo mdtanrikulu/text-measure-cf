@@ -269,14 +269,14 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎨 ENS-Style Domain Image Generator</h1>
+            <h1>🎨 ENS Image Generator</h1>
             <p>Dynamic Font Sizing with Text Measurement & Background Images</p>
         </div>
         
         <div class="content">
             <div class="controls">
                 <div class="form-group">
-                    <label for="text">Domain Name</label>
+                    <label for="text">ENS Name</label>
                     <textarea id="text" placeholder="Enter domain name...">google.eth</textarea>
                     <div class="sample-texts">
                         <span class="sample-text" onclick="setText('google.eth')">google.eth</span>
@@ -302,11 +302,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="width">Width (px)</label>
-                        <input type="number" id="width" value="518" min="100" max="1200">
+                        <input type="number" id="width" value="270" min="100" max="1200">
                     </div>
                     <div class="form-group">
                         <label for="height">Height (px)</label>
-                        <input type="number" id="height" value="518" min="100" max="800">
+                        <input type="number" id="height" value="270" min="100" max="800">
                     </div>
                 </div>
 
@@ -475,8 +475,8 @@
             ];
             setText(randomTexts[Math.floor(Math.random() * randomTexts.length)]);
 
-            document.getElementById('width').value = 518;
-            document.getElementById('height').value = 518;
+            document.getElementById('width').value = 270;
+            document.getElementById('height').value = 270;
 
             const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
             const bgColors = ['#2C3E50', '#8E44AD', '#E74C3C', '#F39C12', '#27AE60', '#3498DB', '#E67E22'];
@@ -515,8 +515,8 @@
             const gradientStyle = document.getElementById('gradientStyle').value;
             const data = {
                 text: document.getElementById('text').value,
-                width: parseInt(document.getElementById('width').value) || 518,
-                height: parseInt(document.getElementById('height').value) || 518,
+                width: parseInt(document.getElementById('width').value) || 270,
+                height: parseInt(document.getElementById('height').value) || 270,
                 backgroundImageUrl: document.getElementById('backgroundImageUrl').value || null,
                 textColor: parseColor(document.getElementById('textColor').value),
                 gradientStart: parseColor(document.getElementById('gradientStart').value),

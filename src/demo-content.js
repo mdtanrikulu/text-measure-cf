@@ -269,7 +269,7 @@ export const demoHTML = `<!DOCTYPE html>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎨 ENS-Style Domain Image Generator</h1>
+            <h1>🎨 ENS style Image Generator</h1>
             <p>Dynamic Font Sizing with Text Measurement & Background Images</p>
         </div>
         

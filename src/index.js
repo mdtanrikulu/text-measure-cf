@@ -2,6 +2,7 @@
 
 import opentype from 'opentype.js';
 import { satoshiBoldBase64 } from './satoshi-font.js';
+import { measureTextFallback, hasComplexScripts, getTextMeasurementStrategy } from './text-measurement.js';
 
 let loadedFont = null;
 
@@ -52,65 +53,9 @@ async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
   }
   
   // Fallback to mathematical approximation
-  return measureTextFallback(text, fontSize, fontFamily);
+  return measureTextFallback(text, fontSize, fontFamily || 'Satoshi');
 }
 
-// Fallback text measurement using mathematical approximations
-function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
-  // Approximate character widths for common fonts (in em units)
-  const charWidths = {
-    // Narrow characters
-    'i': 0.3, 'l': 0.3, 'j': 0.3, 'f': 0.35, 't': 0.4, 'r': 0.4,
-    // Regular width characters  
-    'a': 0.55, 'b': 0.6, 'c': 0.5, 'd': 0.6, 'e': 0.55, 'g': 0.6, 'h': 0.6, 'k': 0.55, 'n': 0.6, 'o': 0.6, 'p': 0.6, 'q': 0.6, 's': 0.5, 'u': 0.6, 'v': 0.55, 'x': 0.55, 'y': 0.55, 'z': 0.5,
-    // Wide characters
-    'w': 0.8, 'm': 0.9,
-    // Uppercase letters (generally wider)
-    'A': 0.7, 'B': 0.65, 'C': 0.7, 'D': 0.7, 'E': 0.6, 'F': 0.55, 'G': 0.75, 'H': 0.7, 'I': 0.3, 'J': 0.4, 'K': 0.65, 'L': 0.55, 'M': 0.85, 'N': 0.7, 'O': 0.75, 'P': 0.6, 'Q': 0.75, 'R': 0.65, 'S': 0.6, 'T': 0.6, 'U': 0.7, 'V': 0.7, 'W': 0.95, 'X': 0.65, 'Y': 0.65, 'Z': 0.6,
-    // Numbers
-    '0': 0.6, '1': 0.6, '2': 0.6, '3': 0.6, '4': 0.6, '5': 0.6, '6': 0.6, '7': 0.6, '8': 0.6, '9': 0.6,
-    // Punctuation and spaces
-    ' ': 0.3, '.': 0.3, ',': 0.3, '!': 0.3, '?': 0.5, ':': 0.3, ';': 0.3, '-': 0.35, '_': 0.5, '(': 0.4, ')': 0.4, '[': 0.4, ']': 0.4, '{': 0.4, '}': 0.4, '/': 0.3, '\\': 0.3, '|': 0.3, '"': 0.4, "'": 0.25, '&': 0.7, '@': 0.9, '#': 0.6, '$': 0.6, '%': 0.9, '^': 0.5, '*': 0.4, '+': 0.6, '=': 0.6, '<': 0.6, '>': 0.6, '~': 0.6, '`': 0.3
-  };
-
-  let totalWidth = 0;
-  for (let char of text) {
-    const charCode = char.charCodeAt(0);
-    let charWidth;
-    
-    if (charWidths[char]) {
-      charWidth = charWidths[char];
-    } else if (
-      // Japanese Hiragana, Katakana, and Kanji ranges
-      (charCode >= 0x3040 && charCode <= 0x309F) || // Hiragana
-      (charCode >= 0x30A0 && charCode <= 0x30FF) || // Katakana  
-      (charCode >= 0x4E00 && charCode <= 0x9FAF) || // CJK Ideographs (Kanji)
-      (charCode >= 0x3400 && charCode <= 0x4DBF) || // CJK Extension A
-      // Chinese characters
-      (charCode >= 0x2E80 && charCode <= 0x2EFF) || // CJK Radicals
-      // Korean Hangul
-      (charCode >= 0xAC00 && charCode <= 0xD7AF) || // Hangul Syllables
-      // Emoji ranges (many are wide) - expanded ranges
-      (charCode >= 0x1F000 && charCode <= 0x1FFFF) || // Extended emoji blocks
-      (charCode >= 0x2600 && charCode <= 0x26FF) ||   // Miscellaneous Symbols
-      (charCode >= 0x2700 && charCode <= 0x27BF)      // Dingbats
-    ) {
-      charWidth = 1.0; // CJK and emoji characters are typically full-width
-    } else {
-      charWidth = 0.6; // Default for other unknown characters
-    }
-    
-    totalWidth += charWidth;
-  }
-
-  return {
-    width: totalWidth * fontSize,
-    height: fontSize * 1.2, // Approximate line height
-    actualBoundingBoxAscent: fontSize * 0.8,
-    actualBoundingBoxDescent: fontSize * 0.2,
-    isAccurate: false
-  };
-}
 
 // Calculate optimal font size to fit text within constraints
 async function calculateFontSize(text, maxWidth, maxHeight = null, minFontSize = 12, maxFontSize = 100) {
@@ -119,28 +64,12 @@ async function calculateFontSize(text, maxWidth, maxHeight = null, minFontSize =
   while (fontSize >= minFontSize) {
     const metrics = await measureTextAccurate(text, fontSize);
     
-    // Add a more aggressive safety margin for international characters and emojis (15% vs 5%)
-    const hasIntlChars = [...text].some(char => {
-      const code = char.codePointAt(0);
-      return (
-        (code >= 0x3040 && code <= 0x309F) ||  // Hiragana
-        (code >= 0x30A0 && code <= 0x30FF) ||  // Katakana  
-        (code >= 0x4E00 && code <= 0x9FAF) ||  // CJK Ideographs
-        (code >= 0x3400 && code <= 0x4DBF) ||  // CJK Extension A
-        (code >= 0x0590 && code <= 0x05FF) ||  // Hebrew
-        (code >= 0x0900 && code <= 0x097F) ||  // Devanagari (Hindi)
-        (code >= 0x10A0 && code <= 0x10FF) ||  // Georgian
-        (code >= 0x0370 && code <= 0x03FF) ||  // Greek
-        (code >= 0x0400 && code <= 0x04FF) ||  // Cyrillic (Russian)
-        (code >= 0x1F000 && code <= 0x1FFFF) || // All emoji blocks
-        (code >= 0x2600 && code <= 0x26FF) ||   // Miscellaneous Symbols
-        (code >= 0x2700 && code <= 0x27BF)      // Dingbats
-      );
-    });
-    const safetyMargin = 0.95;
+    // Use text analysis for safety margins
+    const strategy = getTextMeasurementStrategy(text);
+    const safetyMargin = 1 - strategy.recommendedSafetyMargin;
     const safeWidth = maxWidth * safetyMargin;
     
-    console.log(`Font size ${fontSize}: measured=${metrics.width.toFixed(1)}, safeWidth=${safeWidth.toFixed(1)}, maxWidth=${maxWidth.toFixed(1)}, hasIntl=${hasIntlChars}`);
+    console.log(`Font size ${fontSize}: measured=${metrics.width.toFixed(1)}, safeWidth=${safeWidth.toFixed(1)}, maxWidth=${maxWidth.toFixed(1)}, hasIntl=${strategy.hasComplexScripts}`);
     
     if (metrics.width <= safeWidth && (!maxHeight || metrics.height <= maxHeight)) {
       return { fontSize, metrics };
@@ -160,8 +89,8 @@ async function createImageWithTextAndBackground(options = {}) {
 
 async function createDynamicSVGImage(options = {}) {
   const {
-    width = 518,
-    height = 518,
+    width = 270,
+    height = 270,
     text = 'Hello World',
     textColor = [255, 255, 255, 1],
     backgroundColor = [255, 255, 255, 1],
@@ -173,7 +102,7 @@ async function createDynamicSVGImage(options = {}) {
     textY = null,
     maxTextWidth = null,
     autoFontSize = true,
-    ensStyle = true // Enable ENS-like styling by default
+    ensStyle = true // Enable ens-style layout by default
   } = options;
 
   // Calculate text area (leave substantial padding for international characters and emojis)
@@ -222,9 +151,9 @@ async function createDynamicSVGImage(options = {}) {
     finalTextX = textX;
     finalTextY = textY;
   } else if (ensStyle) {
-    // center horizontally, position near bottom with padding
+    // center horizontally, bottom with padding
     finalTextX = width / 2;
-    finalTextY = height - (height * 0.15); // 15% from bottom
+    finalTextY = height - 72; // Bottom positioning with padding
   } else {
     // Default: center both ways
     finalTextX = width / 2;
@@ -234,7 +163,7 @@ async function createDynamicSVGImage(options = {}) {
   
   const textColorRGB = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
   
-  // Create background element with gradient or solid color
+  // Create background element with background
   let backgroundElement = '';
   if (backgroundImageUrl) {
     try {
@@ -244,51 +173,88 @@ async function createDynamicSVGImage(options = {}) {
         const imageBuffer = await imageResponse.arrayBuffer();
         const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
         const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-        const dataUrl = `data:${contentType};base64,${imageBase64}`;
-        backgroundElement = `<image href="${dataUrl}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`;
+        backgroundElement = `<image href="data:${contentType};base64,${imageBase64}" width="${width}" height="${height}"/>
+        <rect width="${width}" height="${height}" fill="#000" fill-opacity=".12"/>`;
       } else {
         console.warn(`Failed to fetch background image: ${imageResponse.status}`);
-        backgroundElement = `<rect width="${width}" height="${height}" fill="rgb(${backgroundColor[0]}, ${backgroundColor[1]}, ${backgroundColor[2]})"/>`;
+        backgroundElement = `<rect width="${width}" height="${height}" fill="url(#paint0_linear)"/>`;
       }
     } catch (error) {
       console.warn('Error fetching background image:', error);
-      backgroundElement = `<rect width="${width}" height="${height}" fill="rgb(${backgroundColor[0]}, ${backgroundColor[1]}, ${backgroundColor[2]})"/>`;
+      backgroundElement = `<rect width="${width}" height="${height}" fill="url(#paint0_linear)"/>`;
     }
-  } else if (useGradient) {
-    const gradientStartRGB = `rgb(${gradientStart[0]}, ${gradientStart[1]}, ${gradientStart[2]})`;
-    const gradientEndRGB = `rgb(${gradientEnd[0]}, ${gradientEnd[1]}, ${gradientEnd[2]})`;
-    backgroundElement = `
-    <defs>
-      <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style="stop-color:${gradientStartRGB};stop-opacity:1" />
-        <stop offset="100%" style="stop-color:${gradientEndRGB};stop-opacity:1" />
-      </linearGradient>
-    </defs>
-    <rect width="${width}" height="${height}" fill="url(#bg-gradient)" rx="${ensStyle ? 20 : 0}"/>`;
   } else {
-    const bgColorRGB = `rgb(${backgroundColor[0]}, ${backgroundColor[1]}, ${backgroundColor[2]})`;
-    backgroundElement = `<rect width="${width}" height="${height}" fill="${bgColorRGB}" rx="${ensStyle ? 20 : 0}"/>`;
+    // ENS-style gradient as default
+    backgroundElement = `<rect width="${width}" height="${height}" fill="url(#paint0_linear)"/>`;
   }
 
-  // Add comprehensive text metrics and layout info as comments
-  const metricsComment = `<!-- Text metrics: width=${metrics.width.toFixed(1)}px, height=${metrics.height.toFixed(1)}px, fontSize=${fontSize}px, font=${metrics.fontName || 'fallback'}, accurate=${metrics.isAccurate} -->
-  <!-- Layout: textArea=${textAreaWidth}x${textAreaHeight}, padding=${paddingX}x${paddingY}, textPos=${finalTextX},${finalTextY} -->
-  <!-- Style: ensStyle=${ensStyle}, anchor=${textAnchor}, baseline=${dominantBaseline} -->`;
-
-  // text with subtle shadow effect
-  const textElement = ensStyle ? 
-    `<text x="${finalTextX}" y="${finalTextY}" font-family="-apple-system, BlinkMacSystemFont, 'Satoshi', 'Segoe UI', Roboto, sans-serif" font-size="${fontSize}" font-weight="700" fill="${textColorRGB}" text-anchor="${textAnchor}" dominant-baseline="${dominantBaseline}" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">${text}</text>` :
-    `<text x="${finalTextX}" y="${finalTextY}" font-family="Arial, sans-serif" font-size="${fontSize}" fill="${textColorRGB}" text-anchor="${textAnchor}" dominant-baseline="${dominantBaseline}">${text}</text>`;
-
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+  if (ensStyle) {
+    const svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    ${backgroundElement}
+    <defs>
+      <filter id="dropShadow" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="${height}" width="${width}">
+        <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.225" width="200%" height="200%"/>
+      </filter>
+    </defs>
+    <g transform="scale(1.9)">
+      <path d="M38.0397 51.0875C38.5012 52.0841 39.6435 54.0541 39.6435 54.0541L52.8484 32L39.9608 41.0921C39.1928 41.6096 38.5628 42.3102 38.1263 43.1319C37.5393 44.3716 37.2274 45.7259 37.2125 47.1C37.1975 48.4742 37.4799 49.8351 38.0397 51.0875Z" fill="white" filter="url(#dropShadow)"/>
+      <path d="M32.152 59.1672C32.3024 61.2771 32.9122 63.3312 33.9405 65.1919C34.9689 67.0527 36.3921 68.6772 38.1147 69.9567L52.8487 80C52.8487 80 43.6303 67.013 35.8549 54.0902C35.0677 52.7249 34.5385 51.2322 34.2926 49.6835C34.1838 48.9822 34.1838 48.2689 34.2926 47.5676C34.0899 47.9348 33.6964 48.6867 33.6964 48.6867C32.908 50.2586 32.371 51.9394 32.1043 53.6705C31.9508 55.5004 31.9668 57.3401 32.152 59.1672Z" fill="white" filter="url(#dropShadow)"/>
+      <path d="M70.1927 60.9125C69.6928 59.9159 68.4555 57.946 68.4555 57.946L54.1514 80L68.1118 70.9138C68.9436 70.3962 69.6261 69.6956 70.099 68.8739C70.7358 67.6334 71.0741 66.2781 71.0903 64.9029C71.1065 63.5277 70.8001 62.1657 70.1927 60.9125Z" fill="white" filter="url(#dropShadow)"/>
+      <path d="M74.8512 52.8328C74.7008 50.7229 74.0909 48.6688 73.0624 46.8081C72.0339 44.9473 70.6105 43.3228 68.8876 42.0433L54.1514 32C54.1514 32 63.3652 44.987 71.1478 57.9098C71.933 59.2755 72.4603 60.7682 72.7043 62.3165C72.8132 63.0178 72.8132 63.7311 72.7043 64.4324C72.9071 64.0652 73.3007 63.3133 73.3007 63.3133C74.0892 61.7414 74.6262 60.0606 74.893 58.3295C75.0485 56.4998 75.0345 54.66 74.8512 52.8328Z" fill="white" filter="url(#dropShadow)"/>
+    </g>
+    <text
+      x="${finalTextX}"
+      y="${finalTextY}"
+      font-size="${fontSize}px"
+      fill="white"
+      text-anchor="middle"
+      filter="url(#dropShadow)">${text}</text>
+    <defs>
+      <style type="text/css">
+        @font-face { 
+          font-family: "Satoshi";
+          font-style: normal;
+          font-weight: 600 900;
+          src: url(data:font/truetype;base64,${satoshiBoldBase64});
+        }
+      </style>
+      <style>
+        text {
+          font-family: 'Satoshi', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
+          font-style: normal;
+          font-variant-numeric: tabular-nums;
+          font-weight: bold;
+          font-variant-ligatures: none;
+          font-feature-settings: "ss01" on, "ss03" on;
+          -moz-font-feature-settings: "ss01" on, "ss03" on;
+          line-height: 34px;
+        }
+      </style>
+      <linearGradient id="paint0_linear" x1="190.5" y1="302" x2="-64" y2="-172.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#44BCF0"/>
+        <stop offset="0.428185" stop-color="#628BF3"/>
+        <stop offset="1" stop-color="#A099FF"/>
+      </linearGradient>
+    </defs>
+  </svg>`;
+    const encoder = new TextEncoder();
+    return encoder.encode(svg);
+  } else {
+    // Original flexible layout for custom style
+    const metricsComment = `<!-- Text metrics: width=${metrics.width.toFixed(1)}px, height=${metrics.height.toFixed(1)}px, fontSize=${fontSize}px, font=${metrics.fontName || 'fallback'}, accurate=${metrics.isAccurate} -->
+    <!-- Layout: textArea=${textAreaWidth}x${textAreaHeight}, padding=${paddingX}x${paddingY}, textPos=${finalTextX},${finalTextY} -->`;
+    
+    const textElement = `<text x="${finalTextX}" y="${finalTextY}" font-family="Arial, sans-serif" font-size="${fontSize}" fill="${textColorRGB}" text-anchor="${textAnchor}" dominant-baseline="${dominantBaseline}">${text}</text>`;
+    
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   ${metricsComment}
   ${backgroundElement}
   ${textElement}
 </svg>`;
-
-  const encoder = new TextEncoder();
-  return encoder.encode(svg);
+    const encoder = new TextEncoder();
+    return encoder.encode(svg);
+  }
 }
 
 function arrayBufferToBase64(buffer) {
