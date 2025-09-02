@@ -100,7 +100,31 @@ function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
 
   let totalWidth = 0;
   for (let char of text) {
-    const charWidth = charWidths[char] || 0.6; // Default width for unknown characters
+    const charCode = char.charCodeAt(0);
+    let charWidth;
+    
+    if (charWidths[char]) {
+      charWidth = charWidths[char];
+    } else if (
+      // Japanese Hiragana, Katakana, and Kanji ranges
+      (charCode >= 0x3040 && charCode <= 0x309F) || // Hiragana
+      (charCode >= 0x30A0 && charCode <= 0x30FF) || // Katakana  
+      (charCode >= 0x4E00 && charCode <= 0x9FAF) || // CJK Ideographs (Kanji)
+      (charCode >= 0x3400 && charCode <= 0x4DBF) || // CJK Extension A
+      // Chinese characters
+      (charCode >= 0x2E80 && charCode <= 0x2EFF) || // CJK Radicals
+      // Korean Hangul
+      (charCode >= 0xAC00 && charCode <= 0xD7AF) || // Hangul Syllables
+      // Emoji ranges (many are wide) - expanded ranges
+      (charCode >= 0x1F000 && charCode <= 0x1FFFF) || // Extended emoji blocks
+      (charCode >= 0x2600 && charCode <= 0x26FF) ||   // Miscellaneous Symbols
+      (charCode >= 0x2700 && charCode <= 0x27BF)      // Dingbats
+    ) {
+      charWidth = 1.0; // CJK and emoji characters are typically full-width
+    } else {
+      charWidth = 0.6; // Default for other unknown characters
+    }
+    
     totalWidth += charWidth;
   }
 
@@ -120,7 +144,30 @@ async function calculateFontSize(text, maxWidth, maxHeight = null, minFontSize =
   while (fontSize >= minFontSize) {
     const metrics = await measureTextAccurate(text, fontSize);
     
-    if (metrics.width <= maxWidth && (!maxHeight || metrics.height <= maxHeight)) {
+    // Add a more aggressive safety margin for international characters and emojis (15% vs 5%)
+    const hasIntlChars = [...text].some(char => {
+      const code = char.codePointAt(0);
+      return (
+        (code >= 0x3040 && code <= 0x309F) ||  // Hiragana
+        (code >= 0x30A0 && code <= 0x30FF) ||  // Katakana  
+        (code >= 0x4E00 && code <= 0x9FAF) ||  // CJK Ideographs
+        (code >= 0x3400 && code <= 0x4DBF) ||  // CJK Extension A
+        (code >= 0x0590 && code <= 0x05FF) ||  // Hebrew
+        (code >= 0x0900 && code <= 0x097F) ||  // Devanagari (Hindi)
+        (code >= 0x10A0 && code <= 0x10FF) ||  // Georgian
+        (code >= 0x0370 && code <= 0x03FF) ||  // Greek
+        (code >= 0x0400 && code <= 0x04FF) ||  // Cyrillic (Russian)
+        (code >= 0x1F000 && code <= 0x1FFFF) || // All emoji blocks
+        (code >= 0x2600 && code <= 0x26FF) ||   // Miscellaneous Symbols
+        (code >= 0x2700 && code <= 0x27BF)      // Dingbats
+      );
+    });
+    const safetyMargin = hasIntlChars ? 0.85 : 0.95;
+    const safeWidth = maxWidth * safetyMargin;
+    
+    console.log(`Font size ${fontSize}: measured=${metrics.width.toFixed(1)}, safeWidth=${safeWidth.toFixed(1)}, maxWidth=${maxWidth.toFixed(1)}, hasIntl=${hasIntlChars}`);
+    
+    if (metrics.width <= safeWidth && (!maxHeight || metrics.height <= maxHeight)) {
       return { fontSize, metrics };
     }
     
@@ -141,19 +188,42 @@ async function createDynamicSVGImage(options = {}) {
     width = 800,
     height = 600,
     text = 'Hello World',
-    textColor = [0, 0, 0, 1],
+    textColor = [255, 255, 255, 1],
     backgroundColor = [255, 255, 255, 1],
+    gradientStart = [102, 126, 234, 1],
+    gradientEnd = [118, 75, 162, 1],
+    useGradient = true,
     backgroundImageUrl = null,
     textX = null,
     textY = null,
-    maxTextWidth = null, // Allow custom text area width
-    autoFontSize = true  // Enable automatic font sizing
+    maxTextWidth = null,
+    autoFontSize = true,
+    ensStyle = true // Enable ENS-like styling by default
   } = options;
 
-  // Calculate text area (leave some padding)
-  const textAreaWidth = maxTextWidth || (width * 0.8);
+  // Calculate text area (leave substantial padding for international characters and emojis)
+  const hasInternationalChars = [...text].some(char => {
+    const code = char.codePointAt(0);
+    return (
+      (code >= 0x3040 && code <= 0x309F) ||  // Hiragana
+      (code >= 0x30A0 && code <= 0x30FF) ||  // Katakana  
+      (code >= 0x4E00 && code <= 0x9FAF) ||  // CJK Ideographs
+      (code >= 0x3400 && code <= 0x4DBF) ||  // CJK Extension A
+      (code >= 0x0590 && code <= 0x05FF) ||  // Hebrew
+      (code >= 0x0900 && code <= 0x097F) ||  // Devanagari (Hindi)
+      (code >= 0x10A0 && code <= 0x10FF) ||  // Georgian
+      (code >= 0x0370 && code <= 0x03FF) ||  // Greek
+      (code >= 0x0400 && code <= 0x04FF) ||  // Cyrillic (Russian)
+      (code >= 0x1F000 && code <= 0x1FFFF) || // All emoji blocks
+      (code >= 0x2600 && code <= 0x26FF) ||   // Miscellaneous Symbols
+      (code >= 0x2700 && code <= 0x27BF)      // Dingbats
+    );
+  });
+  const paddingMultiplier = hasInternationalChars ? 0.6 : 0.8;
+  const textAreaWidth = maxTextWidth || (width * paddingMultiplier);
   const textAreaHeight = height * 0.6;
-  const paddingX = (width - textAreaWidth) / 2; // Calculate actual padding used
+  const paddingX = (width - textAreaWidth) / 2;
+  const paddingY = (height - textAreaHeight) / 2;
   
   // Calculate optimal font size if auto-sizing is enabled
   let fontSize = options.fontSize || 48;
@@ -167,28 +237,63 @@ async function createDynamicSVGImage(options = {}) {
     metrics = await measureTextAccurate(text, fontSize);
   }
 
-  // Position text within the calculated text area bounds
-  const finalTextX = textX !== null ? textX : paddingX + (textAreaWidth / 2);
-  const finalTextY = textY !== null ? textY : height / 2;
+  // text at bottom center
+  let finalTextX, finalTextY;
+  let textAnchor = 'middle';
+  let dominantBaseline = 'alphabetic';
   
-  const bgColorRGB = `rgb(${backgroundColor[0]}, ${backgroundColor[1]}, ${backgroundColor[2]})`;
+  if (textX !== null && textY !== null) {
+    // Use explicit positioning if provided
+    finalTextX = textX;
+    finalTextY = textY;
+  } else if (ensStyle) {
+    // center horizontally, position near bottom with padding
+    finalTextX = width / 2;
+    finalTextY = height - (height * 0.15); // 15% from bottom
+  } else {
+    // Default: center both ways
+    finalTextX = width / 2;
+    finalTextY = height / 2;
+    dominantBaseline = 'central';
+  }
+  
   const textColorRGB = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
-
+  
+  // Create background element with gradient or solid color
   let backgroundElement = '';
   if (backgroundImageUrl) {
     backgroundElement = `<image href="${backgroundImageUrl}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`;
+  } else if (useGradient) {
+    const gradientStartRGB = `rgb(${gradientStart[0]}, ${gradientStart[1]}, ${gradientStart[2]})`;
+    const gradientEndRGB = `rgb(${gradientEnd[0]}, ${gradientEnd[1]}, ${gradientEnd[2]})`;
+    backgroundElement = `
+    <defs>
+      <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:${gradientStartRGB};stop-opacity:1" />
+        <stop offset="100%" style="stop-color:${gradientEndRGB};stop-opacity:1" />
+      </linearGradient>
+    </defs>
+    <rect width="${width}" height="${height}" fill="url(#bg-gradient)" rx="${ensStyle ? 20 : 0}"/>`;
+  } else {
+    const bgColorRGB = `rgb(${backgroundColor[0]}, ${backgroundColor[1]}, ${backgroundColor[2]})`;
+    backgroundElement = `<rect width="${width}" height="${height}" fill="${bgColorRGB}" rx="${ensStyle ? 20 : 0}"/>`;
   }
 
-  // Add text metrics info as comment
+  // Add comprehensive text metrics and layout info as comments
   const metricsComment = `<!-- Text metrics: width=${metrics.width.toFixed(1)}px, height=${metrics.height.toFixed(1)}px, fontSize=${fontSize}px, font=${metrics.fontName || 'fallback'}, accurate=${metrics.isAccurate} -->
-  <!-- Layout: textArea=${textAreaWidth}x${textAreaHeight}, paddingX=${paddingX}, textPos=${finalTextX},${finalTextY} -->`;
+  <!-- Layout: textArea=${textAreaWidth}x${textAreaHeight}, padding=${paddingX}x${paddingY}, textPos=${finalTextX},${finalTextY} -->
+  <!-- Style: ensStyle=${ensStyle}, anchor=${textAnchor}, baseline=${dominantBaseline} -->`;
+
+  // text with subtle shadow effect
+  const textElement = ensStyle ? 
+    `<text x="${finalTextX}" y="${finalTextY}" font-family="-apple-system, BlinkMacSystemFont, 'Satoshi', 'Segoe UI', Roboto, sans-serif" font-size="${fontSize}" font-weight="700" fill="${textColorRGB}" text-anchor="${textAnchor}" dominant-baseline="${dominantBaseline}" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));">${text}</text>` :
+    `<text x="${finalTextX}" y="${finalTextY}" font-family="Arial, sans-serif" font-size="${fontSize}" fill="${textColorRGB}" text-anchor="${textAnchor}" dominant-baseline="${dominantBaseline}">${text}</text>`;
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   ${metricsComment}
-  <rect width="${width}" height="${height}" fill="${bgColorRGB}"/>
   ${backgroundElement}
-  <text x="${finalTextX}" y="${finalTextY}" font-family="Arial, sans-serif" font-size="${fontSize}" fill="${textColorRGB}" text-anchor="middle" dominant-baseline="central">${text}</text>
+  ${textElement}
 </svg>`;
 
   const encoder = new TextEncoder();

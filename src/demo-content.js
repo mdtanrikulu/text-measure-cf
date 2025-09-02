@@ -269,34 +269,44 @@ export const demoHTML = `<!DOCTYPE html>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎨 Canvas CF Worker Demo</h1>
+            <h1>🎨 ENS-Style Domain Image Generator</h1>
             <p>Dynamic Font Sizing with Text Measurement & Background Images</p>
         </div>
         
         <div class="content">
             <div class="controls">
                 <div class="form-group">
-                    <label for="text">Text Content</label>
-                    <textarea id="text" placeholder="Enter your text here...">Hello, Dynamic Font Sizing!</textarea>
+                    <label for="text">Domain Name</label>
+                    <textarea id="text" placeholder="Enter domain name...">google.eth</textarea>
                     <div class="sample-texts">
-                        <span class="sample-text" onclick="setText('John Doe')">John Doe</span>
-                        <span class="sample-text" onclick="setText('Hello 🌍 World! 🎨')">Emojis</span>
-                        <span class="sample-text" onclick="setText('مرحبا بالعالم')">Arabic</span>
-                        <span class="sample-text" onclick="setText('你好世界')">Chinese</span>
-                        <span class="sample-text" onclick="setText('🚀 Dynamic Font Sizing ⚡')">Mixed</span>
-                        <span class="sample-text" onclick="setText('Christopher Alexander Johnson')">Long Name</span>
-                        <span class="sample-text" onclick="setText('This is an extremely long piece of text that will require very small font sizes to fit properly within the layout constraints')">Very Long Text</span>
+                        <span class="sample-text" onclick="setText('google.eth')">google.eth</span>
+                        <span class="sample-text" onclick="setText('🌟star.eth')">🌟star.eth</span>
+                        <span class="sample-text" onclick="setText('🎮gaming.eth')">🎮gaming.eth</span>
+                        <span class="sample-text" onclick="setText('🚀rocket.eth')">🚀rocket.eth</span>
+                        <span class="sample-text" onclick="setText('你好.eth')">你好.eth (Chinese)</span>
+                        <span class="sample-text" onclick="setText('مرحبا.eth')">مرحبا.eth (Arabic)</span>
+                        <span class="sample-text" onclick="setText('こんにちは.eth')">こんにちは.eth (Japanese)</span>
+                        <span class="sample-text" onclick="setText('שלום.eth')">שלום.eth (Hebrew)</span>
+                        <span class="sample-text" onclick="setText('नमस्ते.eth')">नमस्ते.eth (Hindi)</span>
+                        <span class="sample-text" onclick="setText('გამარჯობა.eth')">გამარჯობა.eth (Georgian)</span>
+                        <span class="sample-text" onclick="setText('γεια.eth')">γεια.eth (Greek)</span>
+                        <span class="sample-text" onclick="setText('привет.eth')">привет.eth (Russian)</span>
+                        <span class="sample-text" onclick="setText('加密货币.eth')">加密货币.eth (Chinese)</span>
+                        <span class="sample-text" onclick="setText('🌍world-مرحبا.eth')">Mixed</span>
+                        <span class="sample-text" onclick="setText('crypto🏦bank.eth')">crypto🏦bank.eth</span>
+                        <span class="sample-text" onclick="setText('デジタル💎art.eth')">デジタル💎art.eth</span>
+                        <span class="sample-text" onclick="setText('verylongdomainname.eth')">Long Domain</span>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="width">Width (px)</label>
-                        <input type="number" id="width" value="600" min="100" max="1200">
+                        <input type="number" id="width" value="500" min="100" max="1200">
                     </div>
                     <div class="form-group">
                         <label for="height">Height (px)</label>
-                        <input type="number" id="height" value="400" min="100" max="800">
+                        <input type="number" id="height" value="500" min="100" max="800">
                     </div>
                 </div>
 
@@ -314,15 +324,33 @@ export const demoHTML = `<!DOCTYPE html>
                     <div class="form-group">
                         <label>Text Color</label>
                         <div class="color-input">
-                            <input type="color" id="textColorPicker" class="color-picker" value="#000000">
-                            <input type="text" id="textColor" value="0,0,0,1" placeholder="R,G,B,A">
+                            <input type="color" id="textColorPicker" class="color-picker" value="#ffffff">
+                            <input type="text" id="textColor" value="255,255,255,1" placeholder="R,G,B,A">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Background Color</label>
+                        <label>Gradient Style</label>
+                        <select id="gradientStyle">
+                            <option value="ens">ENS Blue/Purple</option>
+                            <option value="custom">Custom Gradient</option>
+                            <option value="solid">Solid Color</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row" id="gradientControls">
+                    <div class="form-group">
+                        <label>Gradient Start</label>
                         <div class="color-input">
-                            <input type="color" id="bgColorPicker" class="color-picker" value="#ffffff">
-                            <input type="text" id="bgColor" value="255,255,255,1" placeholder="R,G,B,A">
+                            <input type="color" id="gradientStartPicker" class="color-picker" value="#667eea">
+                            <input type="text" id="gradientStart" value="102,126,234,1" placeholder="R,G,B,A">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Gradient End</label>
+                        <div class="color-input">
+                            <input type="color" id="gradientEndPicker" class="color-picker" value="#764ba2">
+                            <input type="text" id="gradientEnd" value="118,75,162,1" placeholder="R,G,B,A">
                         </div>
                     </div>
                 </div>
@@ -384,10 +412,33 @@ export const demoHTML = `<!DOCTYPE html>
             document.getElementById('textColor').value = \`\${rgb.r},\${rgb.g},\${rgb.b},1\`;
         });
 
-        document.getElementById('bgColorPicker').addEventListener('change', function() {
+        document.getElementById('gradientStartPicker').addEventListener('change', function() {
             const hex = this.value;
             const rgb = hexToRgb(hex);
-            document.getElementById('bgColor').value = \`\${rgb.r},\${rgb.g},\${rgb.b},1\`;
+            document.getElementById('gradientStart').value = \`\${rgb.r},\${rgb.g},\${rgb.b},1\`;
+        });
+
+        document.getElementById('gradientEndPicker').addEventListener('change', function() {
+            const hex = this.value;
+            const rgb = hexToRgb(hex);
+            document.getElementById('gradientEnd').value = \`\${rgb.r},\${rgb.g},\${rgb.b},1\`;
+        });
+
+        document.getElementById('gradientStyle').addEventListener('change', function() {
+            const style = this.value;
+            const controls = document.getElementById('gradientControls');
+            
+            if (style === 'ens') {
+                controls.style.display = 'none';
+                document.getElementById('gradientStart').value = '102,126,234,1';
+                document.getElementById('gradientEnd').value = '118,75,162,1';
+                document.getElementById('gradientStartPicker').value = '#667eea';
+                document.getElementById('gradientEndPicker').value = '#764ba2';
+            } else if (style === 'custom') {
+                controls.style.display = 'grid';
+            } else {
+                controls.style.display = 'none';
+            }
         });
 
         function hexToRgb(hex) {
@@ -463,16 +514,20 @@ export const demoHTML = `<!DOCTYPE html>
             previewContainer.innerHTML = '<p class="loading">Generating image...</p>';
             metricsDiv.style.display = 'none';
 
+            const gradientStyle = document.getElementById('gradientStyle').value;
             const data = {
                 text: document.getElementById('text').value,
-                width: parseInt(document.getElementById('width').value) || 600,
-                height: parseInt(document.getElementById('height').value) || 400,
+                width: parseInt(document.getElementById('width').value) || 500,
+                height: parseInt(document.getElementById('height').value) || 500,
                 backgroundImageUrl: document.getElementById('backgroundImageUrl').value || null,
                 textColor: parseColor(document.getElementById('textColor').value),
-                backgroundColor: parseColor(document.getElementById('bgColor').value),
+                gradientStart: parseColor(document.getElementById('gradientStart').value),
+                gradientEnd: parseColor(document.getElementById('gradientEnd').value),
+                useGradient: gradientStyle !== 'solid',
                 maxTextWidth: parseInt(document.getElementById('maxTextWidth').value) || null,
                 fontSize: parseInt(document.getElementById('fontSize').value) || null,
-                autoFontSize: document.getElementById('autoFontSize').checked
+                autoFontSize: document.getElementById('autoFontSize').checked,
+                ensStyle: true
             };
 
             try {

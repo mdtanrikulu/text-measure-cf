@@ -68,8 +68,3 @@ yarn deploy
 ## Testing
 
 Open `test.html` in a browser with the dev server running to test the functionality.
-
-## Known Issues
-
-- Large background images may cause timeout issues
-- Text positioning needs manual calculation for complex layouts
