@@ -1,7 +1,7 @@
-name = "canvas-cf-worker"
+name = "measure-text-worker"
 main = "src/index.js"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat", "experimental"]
+compatibility_date = "2025-09-02"
+compatibility_flags = ["nodejs_compat"]
 
 # No longer need WASM rules
 
@@ -16,4 +16,4 @@ globs = ["assets/**/*.ttf"]
 fallthrough = true
 
 [env.production]
-name = "canvas-cf-worker"
+name = "measure-text-worker"
