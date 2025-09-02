@@ -165,11 +165,20 @@ export function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
   // Apply text adjustments
   let kerningAdjustment = 1.0;
   
+  // Check for digit-heavy text that might need extra spacing
+  const digitCount = (text.match(/\d/g) || []).length;
+  const hasMultipleDigits = digitCount > 2;
+  
   // Kerning adjustments
   if (hasComplexScripts) {
     kerningAdjustment = 0.95; // Complex scripts often have tighter spacing
   } else if (text.length > 20) {
     kerningAdjustment = 0.98; // Longer text tends to have slightly tighter average spacing
+  }
+  
+  // Digit spacing adjustments for proportional fonts (due to tabular styling)
+  if (hasMultipleDigits && fontName !== 'Courier') {
+    kerningAdjustment *= 1.08; // Add 8% extra width for digit-heavy text in proportional fonts
   }
   
   // Ligature adjustments (ligatures take less space than individual characters)

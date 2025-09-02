@@ -30,22 +30,50 @@ async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
   
   if (font) {
     try {
-      // Get text width using OpenType.js
-      const textWidth = font.getAdvanceWidth(text, fontSize);
+      // Check if text contains many digits which might cause spacing issues
+      const digitCount = (text.match(/\d/g) || []).length;
+      const hasMultipleDigits = digitCount > 2;
       
-      // Get font metrics
+      // Use getPath for more accurate bounds measurement
+      const path = font.getPath(text, 0, 0, fontSize);
+      const bbox = path.getBoundingBox();
+      
+      // Get advance width for comparison
+      const advanceWidth = font.getAdvanceWidth(text, fontSize);
+      
+      // Calculate actual text bounds
+      const actualWidth = bbox.x2 - bbox.x1;
+      const actualHeight = bbox.y2 - bbox.y1;
+      
+      // Get font metrics for baseline calculations
       const fontScale = 1 / font.unitsPerEm * fontSize;
       const ascent = font.ascender * fontScale;
       const descent = Math.abs(font.descender * fontScale);
-      const height = ascent + descent;
+      
+      // Apply digit-specific adjustments for better spacing
+      let adjustedWidth = actualWidth;
+      if (hasMultipleDigits) {
+        // Digits in proportional fonts can have inconsistent spacing
+        // Add extra padding when multiple digits are present
+        const digitPadding = digitCount * fontSize * 0.05; // 5% per digit
+        adjustedWidth = Math.max(actualWidth + digitPadding, advanceWidth);
+      } else {
+        // Use the larger of advance width or bounding box width for safety
+        adjustedWidth = Math.max(actualWidth, advanceWidth * 0.95);
+      }
       
       return {
-        width: textWidth,
-        height: height,
+        width: adjustedWidth,
+        height: Math.max(actualHeight, ascent + descent),
         actualBoundingBoxAscent: ascent,
         actualBoundingBoxDescent: descent,
         fontName: font.names.fontFamily?.en || 'Unknown',
-        isAccurate: true
+        isAccurate: true,
+        // Debug info
+        advanceWidth: advanceWidth,
+        boundingWidth: actualWidth,
+        boundingBox: bbox,
+        digitAdjustment: hasMultipleDigits ? digitCount * fontSize * 0.07 : 0
       };
     } catch (error) {
       console.warn('OpenType measurement failed, using fallback:', error.message);
