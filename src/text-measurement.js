@@ -88,7 +88,7 @@ export function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
         (charCode >= 0x2B740 && charCode <= 0x2B81F) || // CJK Extension D
         (charCode >= 0x2B820 && charCode <= 0x2CEAF)    // CJK Extension E
       ) {
-        charWidth = 1.0; // Full-width characters
+        charWidth = 1.2; // Full-width characters - increased from 1.0 to account for actual rendering width
         hasComplexScripts = true;
       } else if (
         // Emoji and symbols (variable width, mostly wide)

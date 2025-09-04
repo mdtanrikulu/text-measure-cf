@@ -4,29 +4,47 @@ import opentype from 'opentype.js';
 import { satoshiBoldBase64 } from './satoshi-font.js';
 import { measureTextFallback, hasComplexScripts, getTextMeasurementStrategy } from './text-measurement.js';
 
-let loadedFont = null;
+let loadedFonts = {
+  primary: null,
+  fallbacks: {}
+};
 
 async function initializeFont() {
-  if (!loadedFont) {
+  if (!loadedFonts.primary) {
     try {
       console.log('Loading Satoshi-Bold font for accurate text measurement...');
       
       // Use embedded base64 font data
       const buffer = Uint8Array.from(atob(satoshiBoldBase64), c => c.charCodeAt(0)).buffer;
-      loadedFont = opentype.parse(buffer);
+      loadedFonts.primary = opentype.parse(buffer);
       
-      console.log(`✅ Font loaded: ${loadedFont.names.fontFamily?.en || 'Unknown'}`);
+      console.log(`✅ Font loaded: ${loadedFonts.primary.names.fontFamily?.en || 'Unknown'}`);
     } catch (error) {
       console.warn('Failed to load Satoshi-Bold font, falling back to mathematical approximation:', error.message);
-      loadedFont = null;
+      loadedFonts.primary = null;
     }
   }
-  return loadedFont;
+  return loadedFonts.primary;
+}
+
+// Detect if text needs a specific font for accurate measurement
+function needsSpecialFont(text) {
+  // Check if text contains CJK characters that might not be well-covered by Satoshi
+  return [...text].some(char => {
+    const code = char.codePointAt(0);
+    return (
+      (code >= 0x3040 && code <= 0x309F) ||   // Hiragana
+      (code >= 0x30A0 && code <= 0x30FF) ||   // Katakana
+      (code >= 0x4E00 && code <= 0x9FFF) ||   // CJK Unified Ideographs
+      (code >= 0xAC00 && code <= 0xD7AF)      // Hangul Syllables
+    );
+  });
 }
 
 // Accurate text measurement using OpenType.js (supports emojis, international text)
 async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
   const font = await initializeFont();
+  const requiresSpecialFont = needsSpecialFont(text);
   
   if (font) {
     try {
@@ -62,25 +80,31 @@ async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
         adjustedWidth = Math.max(actualWidth, advanceWidth * 0.95);
       }
       
+      // If text requires special font but we're using a fallback, add significant safety margin
+      if (requiresSpecialFont) {
+        adjustedWidth *= 1.5; // 50% safety margin for CJK characters - they're often wider than measured
+      }
+      
       return {
         width: adjustedWidth,
         height: Math.max(actualHeight, ascent + descent),
         actualBoundingBoxAscent: ascent,
         actualBoundingBoxDescent: descent,
         fontName: font.names.fontFamily?.en || 'Unknown',
-        isAccurate: true,
+        isAccurate: !requiresSpecialFont, // Less accurate if we need special font but don't have it
         // Debug info
         advanceWidth: advanceWidth,
         boundingWidth: actualWidth,
         boundingBox: bbox,
-        digitAdjustment: hasMultipleDigits ? digitCount * fontSize * 0.07 : 0
+        digitAdjustment: hasMultipleDigits ? digitCount * fontSize * 0.07 : 0,
+        needsSpecialFont: requiresSpecialFont
       };
     } catch (error) {
       console.warn('OpenType measurement failed, using fallback:', error.message);
     }
   }
   
-  // Fallback to mathematical approximation
+  // Fallback to mathematical approximation - this is especially good for CJK
   return measureTextFallback(text, fontSize, fontFamily || 'Satoshi');
 }
 
@@ -121,16 +145,13 @@ async function createDynamicSVGImage(options = {}) {
     height = 270,
     text = 'Hello World',
     textColor = [255, 255, 255, 1],
-    backgroundColor = [255, 255, 255, 1],
-    gradientStart = [102, 126, 234, 1],
-    gradientEnd = [118, 75, 162, 1],
-    useGradient = true,
     backgroundImageUrl = null,
     textX = null,
     textY = null,
     maxTextWidth = null,
     autoFontSize = true,
-    ensStyle = true // Enable ens-style layout by default
+    ensStyle = true, // Enable ens-style layout by default
+    maxFontSize = 68 // Maximum font size limit
   } = options;
 
   // Calculate text area (leave substantial padding for international characters and emojis)
@@ -151,21 +172,38 @@ async function createDynamicSVGImage(options = {}) {
       (code >= 0x2700 && code <= 0x27BF)      // Dingbats
     );
   });
-  const paddingMultiplier = hasInternationalChars ? 0.6 : 0.8;
-  const textAreaWidth = maxTextWidth || (width * paddingMultiplier);
+  // Calculate text area with special handling for CJK text
+  let textAreaWidth, paddingX, paddingY;
+  
+  if (ensStyle && hasInternationalChars) {
+    // Conservative calculation only for CJK text
+    const logoXPosition = 70;
+    const rightPadding = 20;
+    const availableWidth = width - logoXPosition - rightPadding; // 180px for 270px canvas
+    textAreaWidth = maxTextWidth || (availableWidth * 0.85); // Use only 85% for CJK
+    paddingX = logoXPosition;
+    paddingY = 20;
+  } else {
+    // Original logic for Latin text
+    const paddingMultiplier = hasInternationalChars ? 0.6 : 0.8;
+    textAreaWidth = maxTextWidth || (width * paddingMultiplier);
+    paddingX = (width - textAreaWidth) / 2;
+    paddingY = (height - textAreaWidth) / 2;
+  }
+  
   const textAreaHeight = height * 0.6;
-  const paddingX = (width - textAreaWidth) / 2;
-  const paddingY = (height - textAreaHeight) / 2;
   
   // Calculate optimal font size if auto-sizing is enabled
   let fontSize = options.fontSize || 48;
   let metrics = null;
   if (autoFontSize && text && text.trim()) {
-    const result = await calculateFontSize(text, textAreaWidth, textAreaHeight);
+    const result = await calculateFontSize(text, textAreaWidth, textAreaHeight, 12, maxFontSize);
     fontSize = result.fontSize;
     metrics = result.metrics;
     console.log(`Auto-calculated font size: ${fontSize}px for text: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}" (${metrics.isAccurate ? 'OpenType' : 'fallback'} measurement)`);
   } else {
+    // Ensure fontSize doesn't exceed maxFontSize even when manually specified
+    fontSize = Math.min(fontSize, maxFontSize);
     metrics = await measureTextAccurate(text, fontSize);
   }
 
@@ -179,9 +217,10 @@ async function createDynamicSVGImage(options = {}) {
     finalTextX = textX;
     finalTextY = textY;
   } else if (ensStyle) {
-    // center horizontally, bottom with padding
-    finalTextX = width / 2;
+    // left align with logo, bottom with padding
+    finalTextX = 70; // Start from same x position as logo
     finalTextY = height - 72; // Bottom positioning with padding
+    textAnchor = 'start'; // Left align text
   } else {
     // Default: center both ways
     finalTextX = width / 2;
@@ -235,7 +274,7 @@ async function createDynamicSVGImage(options = {}) {
       y="${finalTextY}"
       font-size="${fontSize}px"
       fill="white"
-      text-anchor="middle"
+      text-anchor="${textAnchor}"
       filter="url(#dropShadow)">${text}</text>
     <defs>
       <style type="text/css">
@@ -372,7 +411,7 @@ curl -X POST http://localhost:8787 \\
         const formData = await request.formData();
         options = {};
         for (const [key, value] of formData.entries()) {
-          if (key === 'width' || key === 'height' || key === 'fontSize' || key === 'textX' || key === 'textY') {
+          if (key === 'width' || key === 'height' || key === 'fontSize' || key === 'textX' || key === 'textY' || key === 'maxFontSize') {
             options[key] = parseInt(value) || undefined;
           } else if (key === 'textColor' || key === 'backgroundColor') {
             try {
