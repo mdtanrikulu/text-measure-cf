@@ -2,7 +2,7 @@
 
 import opentype from 'opentype.js';
 import { satoshiBoldBase64 } from './satoshi-font.js';
-import { measureTextFallback, hasComplexScripts, getTextMeasurementStrategy } from './text-measurement.js';
+import { measureTextFallback, getTextMeasurementStrategy, hasComplexEmojis } from './text-measurement.js';
 
 let loadedFonts = {
   primary: null,
@@ -41,10 +41,18 @@ function needsSpecialFont(text) {
   });
 }
 
+
 // Accurate text measurement using OpenType.js (supports emojis, international text)
 async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
   const font = await initializeFont();
   const requiresSpecialFont = needsSpecialFont(text);
+  const hasEmojis = hasComplexEmojis(text);
+  
+  // for text with emojis, skip OpenType.js entirely. it's very inaccurate with compound emojis
+  if (hasEmojis) {
+    console.log('Skipping OpenType.js for emoji-containing text, using fallback');
+    return measureTextFallback(text, fontSize, fontFamily || 'Satoshi');
+  }
   
   if (font) {
     try {

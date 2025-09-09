@@ -233,6 +233,44 @@ export function hasComplexScripts(text) {
   });
 }
 
+// Detect if text contains complex emojis that might be measured incorrectly by OpenType.js
+export function hasComplexEmojis(text) {
+  try {
+    // Use Intl.Segmenter for proper text segmentation
+    const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    const segments = [...segmenter.segment(text)];
+    
+    return segments.some(segment => {
+      const char = segment.segment;
+      // Check if this grapheme cluster contains emoji
+      for (const codePoint of char) {
+        const code = codePoint.codePointAt(0);
+        if (
+          (code >= 0x1F000 && code <= 0x1F9FF) ||  // Emoji blocks
+          (code >= 0x1FA00 && code <= 0x1FAFF) ||  // Extended Emoji
+          (code >= 0x2600 && code <= 0x26FF) ||    // Miscellaneous Symbols
+          (code >= 0x2700 && code <= 0x27BF)       // Dingbats
+        ) {
+          return true;
+        }
+      }
+      return false;
+    });
+  } catch (error) {
+    // Fallback if Intl.Segmenter is not available
+    console.warn('Intl.Segmenter not available, using fallback emoji detection');
+    return [...text].some(char => {
+      const code = char.codePointAt(0);
+      return (
+        (code >= 0x1F000 && code <= 0x1F9FF) ||
+        (code >= 0x1FA00 && code <= 0x1FAFF) ||
+        (code >= 0x2600 && code <= 0x26FF) ||
+        (code >= 0x2700 && code <= 0x27BF)
+      );
+    });
+  }
+}
+
 // Get appropriate fallback strategy based on text content
 export function getTextMeasurementStrategy(text) {
   const hasEmojis = [...text].some(char => {
