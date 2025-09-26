@@ -1,4 +1,5 @@
 .pnp*
 .wrangler
 .yarn
+.zed
 node_modules

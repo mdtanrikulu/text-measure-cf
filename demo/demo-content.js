@@ -6,7 +6,7 @@ export const demoHTML = `<!DOCTYPE html>
     <title>Canvas CF Worker - Dynamic Font Sizing Demo</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -240,11 +240,11 @@ export const demoHTML = `<!DOCTYPE html>
                 grid-template-columns: 1fr;
                 gap: 20px;
             }
-            
+
             .form-row {
                 grid-template-columns: 1fr;
             }
-            
+
             .button-group {
                 flex-direction: column;
             }
@@ -272,7 +272,7 @@ export const demoHTML = `<!DOCTYPE html>
             <h1>🎨 ENS style Image Generator</h1>
             <p>Dynamic Font Sizing with Text Measurement & Background Images</p>
         </div>
-        
+
         <div class="content">
             <div class="controls">
                 <div class="form-group">
@@ -314,8 +314,8 @@ export const demoHTML = `<!DOCTYPE html>
                     <label for="backgroundImageUrl">Background Image URL (optional)</label>
                     <input type="url" id="backgroundImageUrl" placeholder="https://example.com/image.jpg">
                     <div class="url-examples">
-                        Try: <a href="#" onclick="setRandomBackground()">Random Image</a> • 
-                        <a href="#" onclick="setBackground('https://picsum.photos/800/600')">Picsum</a> • 
+                        Try: <a href="#" onclick="setRandomBackground()">Random Image</a> •
+                        <a href="#" onclick="setBackground('https://picsum.photos/800/600')">Picsum</a> •
                         <a href="#" onclick="setBackground('https://source.unsplash.com/800x600/?nature')">Unsplash Nature</a>
                     </div>
                 </div>
@@ -382,7 +382,7 @@ export const demoHTML = `<!DOCTYPE html>
                 <div class="preview-container" id="previewContainer">
                     <p class="loading">Click "Generate Image" to see your design...</p>
                 </div>
-                
+
                 <div id="metrics" style="display: none;">
                 </div>
             </div>
@@ -427,7 +427,7 @@ export const demoHTML = `<!DOCTYPE html>
         document.getElementById('gradientStyle').addEventListener('change', function() {
             const style = this.value;
             const controls = document.getElementById('gradientControls');
-            
+
             if (style === 'ens') {
                 controls.style.display = 'none';
                 document.getElementById('gradientStart').value = '102,126,234,1';
@@ -480,16 +480,16 @@ export const demoHTML = `<!DOCTYPE html>
 
             const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
             const bgColors = ['#2C3E50', '#8E44AD', '#E74C3C', '#F39C12', '#27AE60', '#3498DB', '#E67E22'];
-            
+
             const textColor = colors[Math.floor(Math.random() * colors.length)];
             const bgColor = bgColors[Math.floor(Math.random() * bgColors.length)];
-            
+
             document.getElementById('textColorPicker').value = textColor;
             document.getElementById('bgColorPicker').value = bgColor;
-            
+
             const textRgb = hexToRgb(textColor);
             const bgRgb = hexToRgb(bgColor);
-            
+
             document.getElementById('textColor').value = \`\${textRgb.r},\${textRgb.g},\${textRgb.b},1\`;
             document.getElementById('bgColor').value = \`\${bgRgb.r},\${bgRgb.g},\${bgRgb.b},1\`;
 
@@ -508,7 +508,7 @@ export const demoHTML = `<!DOCTYPE html>
         async function generateImage() {
             const previewContainer = document.getElementById('previewContainer');
             const metricsDiv = document.getElementById('metrics');
-            
+
             previewContainer.innerHTML = '<p class="loading">Generating image...</p>';
             metricsDiv.style.display = 'none';
 
@@ -541,7 +541,7 @@ export const demoHTML = `<!DOCTYPE html>
 
                 if (result.success) {
                     lastGeneratedImage = result.image;
-                    
+
                     previewContainer.innerHTML = \`
                         <img src="\${result.image}" alt="Generated Image" class="preview-image">
                     \`;

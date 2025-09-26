@@ -1,5 +1,3 @@
-// Simplified - no longer need CanvasKit polyfills
-
 import opentype from 'opentype.js';
 import { satoshiBoldBase64 } from './satoshi-font.js';
 import { measureTextFallback, getTextMeasurementStrategy, hasComplexEmojis } from './text-measurement.js';
@@ -13,11 +11,11 @@ async function initializeFont() {
   if (!loadedFonts.primary) {
     try {
       console.log('Loading Satoshi-Bold font for accurate text measurement...');
-      
+
       // Use embedded base64 font data
       const buffer = Uint8Array.from(atob(satoshiBoldBase64), c => c.charCodeAt(0)).buffer;
       loadedFonts.primary = opentype.parse(buffer);
-      
+
       console.log(`✅ Font loaded: ${loadedFonts.primary.names.fontFamily?.en || 'Unknown'}`);
     } catch (error) {
       console.warn('Failed to load Satoshi-Bold font, falling back to mathematical approximation:', error.message);
@@ -47,35 +45,35 @@ async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
   const font = await initializeFont();
   const requiresSpecialFont = needsSpecialFont(text);
   const hasEmojis = hasComplexEmojis(text);
-  
+
   // for text with emojis, skip OpenType.js entirely. it's very inaccurate with compound emojis
   if (hasEmojis) {
     console.log('Skipping OpenType.js for emoji-containing text, using fallback');
     return measureTextFallback(text, fontSize, fontFamily || 'Satoshi');
   }
-  
+
   if (font) {
     try {
       // Check if text contains many digits which might cause spacing issues
       const digitCount = (text.match(/\d/g) || []).length;
       const hasMultipleDigits = digitCount > 2;
-      
+
       // Use getPath for more accurate bounds measurement
       const path = font.getPath(text, 0, 0, fontSize);
       const bbox = path.getBoundingBox();
-      
+
       // Get advance width for comparison
       const advanceWidth = font.getAdvanceWidth(text, fontSize);
-      
+
       // Calculate actual text bounds
       const actualWidth = bbox.x2 - bbox.x1;
       const actualHeight = bbox.y2 - bbox.y1;
-      
+
       // Get font metrics for baseline calculations
       const fontScale = 1 / font.unitsPerEm * fontSize;
       const ascent = font.ascender * fontScale;
       const descent = Math.abs(font.descender * fontScale);
-      
+
       // Apply digit-specific adjustments for better spacing
       let adjustedWidth = actualWidth;
       if (hasMultipleDigits) {
@@ -87,12 +85,12 @@ async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
         // Use the larger of advance width or bounding box width for safety
         adjustedWidth = Math.max(actualWidth, advanceWidth * 0.95);
       }
-      
+
       // If text requires special font but we're using a fallback, add significant safety margin
       if (requiresSpecialFont) {
         adjustedWidth *= 1.5; // 50% safety margin for CJK characters - they're often wider than measured
       }
-      
+
       return {
         width: adjustedWidth,
         height: Math.max(actualHeight, ascent + descent),
@@ -111,7 +109,7 @@ async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
       console.warn('OpenType measurement failed, using fallback:', error.message);
     }
   }
-  
+
   // Fallback to mathematical approximation - this is especially good for CJK
   return measureTextFallback(text, fontSize, fontFamily || 'Satoshi');
 }
@@ -120,32 +118,27 @@ async function measureTextAccurate(text, fontSize = 48, fontFamily = 'Arial') {
 // Calculate optimal font size to fit text within constraints
 async function calculateFontSize(text, maxWidth, maxHeight = null, minFontSize = 12, maxFontSize = 100) {
   let fontSize = maxFontSize;
-  
+
   while (fontSize >= minFontSize) {
     const metrics = await measureTextAccurate(text, fontSize);
-    
+
     // Use text analysis for safety margins
     const strategy = getTextMeasurementStrategy(text);
     const safetyMargin = 1 - strategy.recommendedSafetyMargin;
     const safeWidth = maxWidth * safetyMargin;
-    
+
     console.log(`Font size ${fontSize}: measured=${metrics.width.toFixed(1)}, safeWidth=${safeWidth.toFixed(1)}, maxWidth=${maxWidth.toFixed(1)}, hasIntl=${strategy.hasComplexScripts}`);
-    
+
     if (metrics.width <= safeWidth && (!maxHeight || metrics.height <= maxHeight)) {
       return { fontSize, metrics };
     }
-    
+
     fontSize -= 1;
   }
-  
+
   return { fontSize: minFontSize, metrics: await measureTextAccurate(text, minFontSize) };
 }
 
-async function createImageWithTextAndBackground(options = {}) {
-  // Use SVG approach with accurate OpenType.js text measurement
-  const data = await createDynamicSVGImage(options);
-  return { data, format: 'svg' };
-}
 
 async function createDynamicSVGImage(options = {}) {
   const {
@@ -167,7 +160,7 @@ async function createDynamicSVGImage(options = {}) {
     const code = char.codePointAt(0);
     return (
       (code >= 0x3040 && code <= 0x309F) ||  // Hiragana
-      (code >= 0x30A0 && code <= 0x30FF) ||  // Katakana  
+      (code >= 0x30A0 && code <= 0x30FF) ||  // Katakana
       (code >= 0x4E00 && code <= 0x9FAF) ||  // CJK Ideographs
       (code >= 0x3400 && code <= 0x4DBF) ||  // CJK Extension A
       (code >= 0x0590 && code <= 0x05FF) ||  // Hebrew
@@ -182,7 +175,7 @@ async function createDynamicSVGImage(options = {}) {
   });
   // Calculate text area with special handling for CJK text
   let textAreaWidth, paddingX, paddingY;
-  
+
   if (ensStyle && hasInternationalChars) {
     // Conservative calculation only for CJK text
     const logoXPosition = 70;
@@ -198,9 +191,9 @@ async function createDynamicSVGImage(options = {}) {
     paddingX = (width - textAreaWidth) / 2;
     paddingY = (height - textAreaWidth) / 2;
   }
-  
+
   const textAreaHeight = height * 0.6;
-  
+
   // Calculate optimal font size if auto-sizing is enabled
   let fontSize = options.fontSize || 48;
   let metrics = null;
@@ -219,7 +212,7 @@ async function createDynamicSVGImage(options = {}) {
   let finalTextX, finalTextY;
   let textAnchor = 'middle';
   let dominantBaseline = 'alphabetic';
-  
+
   if (textX !== null && textY !== null) {
     // Use explicit positioning if provided
     finalTextX = textX;
@@ -235,9 +228,9 @@ async function createDynamicSVGImage(options = {}) {
     finalTextY = height / 2;
     dominantBaseline = 'central';
   }
-  
+
   const textColorRGB = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
-  
+
   // Create background element with background
   let backgroundElement = '';
   if (backgroundImageUrl) {
@@ -286,7 +279,7 @@ async function createDynamicSVGImage(options = {}) {
       filter="url(#dropShadow)">${text}</text>
     <defs>
       <style type="text/css">
-        @font-face { 
+        @font-face {
           font-family: "Satoshi";
           font-style: normal;
           font-weight: 600 900;
@@ -318,9 +311,9 @@ async function createDynamicSVGImage(options = {}) {
     // Original flexible layout for custom style
     const metricsComment = `<!-- Text metrics: width=${metrics.width.toFixed(1)}px, height=${metrics.height.toFixed(1)}px, fontSize=${fontSize}px, font=${metrics.fontName || 'fallback'}, accurate=${metrics.isAccurate} -->
     <!-- Layout: textArea=${textAreaWidth}x${textAreaHeight}, padding=${paddingX}x${paddingY}, textPos=${finalTextX},${finalTextY} -->`;
-    
+
     const textElement = `<text x="${finalTextX}" y="${finalTextY}" font-family="Arial, sans-serif" font-size="${fontSize}" fill="${textColorRGB}" text-anchor="${textAnchor}" dominant-baseline="${dominantBaseline}">${text}</text>`;
-    
+
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   ${metricsComment}
@@ -332,139 +325,10 @@ async function createDynamicSVGImage(options = {}) {
   }
 }
 
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-export default {
-  async fetch(request, env, ctx) {
-    try {
-      if (request.method === 'OPTIONS') {
-        return new Response(null, {
-          status: 204,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-          },
-        });
-      }
-
-      if (request.method === 'GET') {
-        const url = new URL(request.url);
-        
-        // Serve demo page
-        if (url.pathname === '/' || url.pathname === '/demo') {
-          try {
-            const { demoHTML } = await import('./demo-content.js');
-            return new Response(demoHTML, {
-              headers: {
-                'Content-Type': 'text/html',
-                'Access-Control-Allow-Origin': '*',
-              },
-            });
-          } catch (error) {
-            console.error('Failed to load demo HTML:', error);
-          }
-        }
-
-        
-        return new Response(`
-🎨 OpenType.js SVG Generator API
-
-🌟 Features:
-✅ Accurate text measurement with OpenType.js
-✅ Universal emoji & international text support (🌍 مرحبا 你好)
-✅ Dynamic font sizing with real font metrics
-✅ Background image support
-✅ Fast SVG generation (no WASM overhead)
-✅ Interactive demo interface
-
-🚀 Endpoints:
-- GET / or /demo - Interactive demo interface  
-- POST / - Generate SVG with JSON data
-
-💻 API Usage:
-curl -X POST http://localhost:8787 \\
-  -H "Content-Type: application/json" \\
-  -d '{"text": "Hello 🌍!", "width": 400, "height": 200, "autoFontSize": true}'
-
-🎯 Try the demo: http://localhost:8787/
-        `, {
-          headers: {
-            'Content-Type': 'text/plain',
-            'Access-Control-Allow-Origin': '*',
-          },
-        });
-      }
-
-      if (request.method !== 'POST') {
-        return new Response('Method not allowed', { 
-          status: 405,
-          headers: { 'Access-Control-Allow-Origin': '*' }
-        });
-      }
-
-      const contentType = request.headers.get('Content-Type') || '';
-      let options = {};
-
-      if (contentType.includes('application/json')) {
-        options = await request.json();
-      } else {
-        const formData = await request.formData();
-        options = {};
-        for (const [key, value] of formData.entries()) {
-          if (key === 'width' || key === 'height' || key === 'fontSize' || key === 'textX' || key === 'textY' || key === 'maxFontSize') {
-            options[key] = parseInt(value) || undefined;
-          } else if (key === 'textColor' || key === 'backgroundColor') {
-            try {
-              options[key] = JSON.parse(value);
-            } catch {
-              options[key] = value;
-            }
-          } else {
-            options[key] = value;
-          }
-        }
-      }
-
-      const result = await createImageWithTextAndBackground(options);
-      const base64Data = arrayBufferToBase64(result.data);
-      
-      const mimeType = result.format === 'svg' ? 'image/svg+xml' : 'image/png';
-
-      const responseData = {
-        success: true,
-        image: `data:${mimeType};base64,${base64Data}`,
-        base64: base64Data,
-        format: result.format
-      };
-
-      return new Response(JSON.stringify(responseData), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-
-    } catch (error) {
-      console.error('Error generating image:', error);
-      return new Response(JSON.stringify({
-        success: false,
-        error: error.message
-      }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    }
-  },
+// Export library functions for use in other projects
+export {
+  createDynamicSVGImage,
+  measureTextAccurate,
+  calculateFontSize,
+  initializeFont
 };

@@ -17,15 +17,15 @@ export function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
     'a': 0.56, 'b': 0.56, 'c': 0.5, 'd': 0.56, 'e': 0.56, 'f': 0.28, 'g': 0.56, 'h': 0.56, 'i': 0.22, 'j': 0.22,
     'k': 0.5, 'l': 0.22, 'm': 0.83, 'n': 0.56, 'o': 0.56, 'p': 0.56, 'q': 0.56, 'r': 0.33, 's': 0.5, 't': 0.28,
     'u': 0.56, 'v': 0.5, 'w': 0.72, 'x': 0.5, 'y': 0.5, 'z': 0.5,
-    
+
     // Latin uppercase
     'A': 0.67, 'B': 0.67, 'C': 0.72, 'D': 0.72, 'E': 0.67, 'F': 0.61, 'G': 0.78, 'H': 0.72, 'I': 0.28, 'J': 0.5,
     'K': 0.67, 'L': 0.56, 'M': 0.83, 'N': 0.72, 'O': 0.78, 'P': 0.67, 'Q': 0.78, 'R': 0.72, 'S': 0.67, 'T': 0.61,
     'U': 0.72, 'V': 0.67, 'W': 0.94, 'X': 0.67, 'Y': 0.67, 'Z': 0.61,
-    
+
     // Numbers (monospace in most fonts)
     '0': 0.56, '1': 0.56, '2': 0.56, '3': 0.56, '4': 0.56, '5': 0.56, '6': 0.56, '7': 0.56, '8': 0.56, '9': 0.56,
-    
+
     // Common punctuation and symbols
     ' ': 0.28, '.': 0.28, ',': 0.28, ';': 0.28, ':': 0.28, '!': 0.28, '?': 0.56, "'": 0.19, '"': 0.35, '`': 0.33,
     '-': 0.33, '–': 0.56, '—': 1.0, '_': 0.56, '(': 0.33, ')': 0.33, '[': 0.28, ']': 0.28, '{': 0.33, '}': 0.33,
@@ -45,18 +45,18 @@ export function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
   for (let i = 0; i < text.length; i++) {
     let char = text[i];
     let charCode = text.codePointAt(i);
-    
+
     // Skip low surrogate if we're on a high surrogate
     if (charCode > 0xFFFF) {
       i++; // Skip the next character as it's part of this surrogate pair
     }
-    
+
     let charWidth = charWidthDb[char];
-    
+
     if (charWidth) {
       // Use precise character width from database
       totalWidth += charWidth;
-      
+
       // Check for common ligatures
       if (i < text.length - 1) {
         const nextChar = text[i + 1];
@@ -154,38 +154,38 @@ export function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
         // Other Unicode characters - use font average
         charWidth = metrics.avgChar * 1.1; // Slightly wider for unknown characters
       }
-      
+
       totalWidth += charWidth;
     }
   }
 
   // Apply font-specific scaling
   const scaledWidth = totalWidth * fontSize;
-  
+
   // Apply text adjustments
   let kerningAdjustment = 1.0;
-  
+
   // Check for digit-heavy text that might need extra spacing
   const digitCount = (text.match(/\d/g) || []).length;
   const hasMultipleDigits = digitCount > 2;
-  
+
   // Kerning adjustments
   if (hasComplexScripts) {
     kerningAdjustment = 0.95; // Complex scripts often have tighter spacing
   } else if (text.length > 20) {
     kerningAdjustment = 0.98; // Longer text tends to have slightly tighter average spacing
   }
-  
+
   // Digit spacing adjustments for proportional fonts (due to tabular styling)
   if (hasMultipleDigits && fontName !== 'Courier') {
     kerningAdjustment *= 1.08; // Add 8% extra width for digit-heavy text in proportional fonts
   }
-  
+
   // Ligature adjustments (ligatures take less space than individual characters)
   if (ligatureCount > 0) {
     kerningAdjustment *= (1 - (ligatureCount * 0.05)); // 5% reduction per ligature
   }
-  
+
   // Font-specific adjustments
   if (fontName === 'Satoshi') {
     kerningAdjustment *= 0.96; // Satoshi tends to be tighter
@@ -239,7 +239,7 @@ export function hasComplexEmojis(text) {
     // Use Intl.Segmenter for proper text segmentation
     const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
     const segments = [...segmenter.segment(text)];
-    
+
     return segments.some(segment => {
       const char = segment.segment;
       // Check if this grapheme cluster contains emoji
@@ -275,14 +275,14 @@ export function hasComplexEmojis(text) {
 export function getTextMeasurementStrategy(text) {
   const hasEmojis = [...text].some(char => {
     const charCode = char.codePointAt(0);
-    return (charCode >= 0x1F000 && charCode <= 0x1FFFF) || 
+    return (charCode >= 0x1F000 && charCode <= 0x1FFFF) ||
            (charCode >= 0x2600 && charCode <= 0x26FF) ||
            (charCode >= 0x2700 && charCode <= 0x27BF);
   });
-  
+
   const hasComplex = hasComplexScripts(text);
   const isLong = text.length > 50;
-  
+
   return {
     needsHighPrecision: hasEmojis || hasComplex,
     hasEmojis,
