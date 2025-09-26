@@ -1,0 +1,9 @@
+demo/
+.wrangler/
+.env
+.git/
+.zed/
+.gitignore
+*.log
+node_modules/
+.DS_Store

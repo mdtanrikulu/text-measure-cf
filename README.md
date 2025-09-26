@@ -1,54 +1,94 @@
-# Text Measure CF
+# Adaptive Layout Composer
 
-A Cloudflare Worker to demonstrate text measurement witohut Canvas requirement, which generates images with text overlays and background images.
+An adaptive layout composer with precise text measurement, dynamic font sizing, and intelligent positioning for international text and emojis.
 
 ## Features
 
-- Generate PNG images with custom dimensions
-- Add text overlays with customizable font size and positioning
+- Generate SVG images with custom dimensions
+- Accurate text measurement using OpenType.js
+- Support for international text (CJK, Arabic, Hebrew, etc.) and emojis
+- Dynamic font sizing that fits text within constraints
 - Support for background images (fetched from URLs)
-- Returns images as base64 data URLs
-- CORS-enabled API
+- Returns SVG data as Uint8Array or base64
+- Optimized for Cloudflare Workers
 
-## API Usage
+## Installation
 
-### POST /
+```bash
+npm install adaptive-layout-composer
+```
 
-Generate an image with the following JSON parameters:
+## Usage
 
-```json
+```javascript
+import { createDynamicSVGImage } from 'adaptive-layout-composer';
+
+// Generate SVG with auto font sizing
+const svgData = await createDynamicSVGImage({
+  text: "Hello 🌍 World!",
+  width: 400,
+  height: 200,
+  autoFontSize: true,
+  ensStyle: true
+});
+
+// Convert to base64 for data URL
+const base64 = btoa(String.fromCharCode(...svgData));
+const dataUrl = `data:image/svg+xml;base64,${base64}`;
+```
+
+### API Reference
+
+#### `createDynamicSVGImage(options)`
+
+Generate an SVG image with the following options:
+
+```javascript
 {
-  "text": "Hello World!",
-  "width": 800,
-  "height": 600,
-  "fontSize": 48,
-  "textColor": [0, 0, 0, 1],
-  "backgroundColor": [255, 255, 255, 1],
-  "backgroundImageUrl": "https://example.com/image.jpg",
-  "textX": 400,
-  "textY": 300
+  text: "Hello World!",           // Text to render
+  width: 270,                     // Image width in pixels
+  height: 270,                    // Image height in pixels
+  textColor: [255, 255, 255, 1],  // RGBA text color
+  backgroundImageUrl: "https://example.com/image.jpg", // Optional background
+  autoFontSize: true,             // Auto-calculate font size to fit
+  maxFontSize: 68,                // Maximum font size when auto-sizing
+  fontSize: 48,                   // Manual font size (if autoFontSize: false)
+  ensStyle: true,                 // Use ENS-style layout with logo
+  textX: 100,                     // Manual X position
+  textY: 100,                     // Manual Y position
+  maxTextWidth: 200               // Maximum text width
 }
 ```
 
-#### Parameters
+#### Other Functions
 
-- `text` (string): Text to overlay on the image
-- `width` (number): Image width in pixels (default: 800)
-- `height` (number): Image height in pixels (default: 600)
-- `fontSize` (number): Font size in pixels (default: 48)
-- `textColor` (array): RGBA color values [r, g, b, a] (default: [0, 0, 0, 1])
-- `backgroundColor` (array): RGBA background color (default: [255, 255, 255, 1])
-- `backgroundImageUrl` (string): URL of background image (optional)
-- `textX` (number): X position of text (default: centered)
-- `textY` (number): Y position of text (default: centered)
+- `measureTextAccurate(text, fontSize, fontFamily)` - Get accurate text measurements
+- `calculateFontSize(text, maxWidth, maxHeight, minSize, maxSize)` - Calculate optimal font size
+- `initializeFont()` - Initialize the embedded Satoshi font
 
-#### Response
+### Demo API Usage
+
+The demo worker provides a REST API:
+
+#### POST /
 
 ```json
 {
+  "text": "Hello 🌍 World!",
+  "width": 400,
+  "height": 200,
+  "autoFontSize": true,
+  "ensStyle": true
+}
+```
+
+Response:
+```json
+{
   "success": true,
-  "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
-  "base64": "iVBORw0KGgoAAAANSUhEUgAA..."
+  "image": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0i...",
+  "base64": "PHN2ZyB3aWR0aD0i...",
+  "format": "svg"
 }
 ```
 
@@ -76,7 +116,7 @@ yarn install
 
 ```bash
 # Start development server for the demo worker
-yarn dev
+yarn demo:dev
 
 # This runs the worker from demo/worker.js which:
 # - Serves the demo HTML interface at /
@@ -88,7 +128,7 @@ yarn dev
 #### Deploy Demo Worker
 ```bash
 # Deploy the demo worker to Cloudflare
-yarn deploy
+yarn demo:deploy
 
 # This deploys demo/worker.js as a Cloudflare Worker
 ```

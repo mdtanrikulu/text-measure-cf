@@ -1,20 +1,48 @@
 {
-  "name": "text-measure-cf",
+  "name": "adaptive-layout-composer",
   "version": "1.0.0",
-  "description": "Cloudflare Worker MVP for generating images with Canvas WASM",
+  "description": "Adaptive layout composer with precise text measurement, dynamic font sizing, and intelligent positioning for international text and emojis",
   "main": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/"
+  ],
+  "keywords": [
+    "svg",
+    "text",
+    "opentype",
+    "font",
+    "measurement",
+    "emoji",
+    "international",
+    "cloudflare",
+    "worker"
+  ],
   "scripts": {
-    "dev": "wrangler dev",
-    "wasm-server": "node wasm-server.js",
-    "dev:full": "concurrently \"yarn wasm-server\" \"yarn dev\"",
-    "deploy": "wrangler deploy"
+    "demo:dev": "cd demo && wrangler dev",
+    "demo:deploy": "cd demo && wrangler deploy"
   },
   "dependencies": {
     "opentype.js": "^1.3.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231218.0",
-    "concurrently": "^9.2.1",
     "wrangler": "4"
-  }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdtanrikulu/adaptive-layout-composer.git"
+  },
+  "author": "Muhammed Tanrikulu <muhammed@ens.domains>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mdtanrikulu/adaptive-layout-composer/issues"
+  },
+  "homepage": "https://github.com/mdtanrikulu/adaptive-layout-composer#readme"
 }

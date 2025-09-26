@@ -325,7 +325,7 @@ async function createDynamicSVGImage(options = {}) {
   }
 }
 
-// Export library functions for use in other projects
+// Export library functions
 export {
   createDynamicSVGImage,
   measureTextAccurate,
