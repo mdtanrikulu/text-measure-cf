@@ -100,40 +100,7 @@ Generate an SVG image with the following options:
 - `measureTextAccurate(text, fontSize, fontFamily)` - Get accurate text measurements using loaded font
 - `calculateFontSize(text, maxWidth, maxHeight, minSize, maxSize)` - Calculate optimal font size to fit text
 
-### Demo API Usage
-
-The demo worker provides a REST API:
-
-#### POST /
-
-```json
-{
-  "text": "Hello 🌍 World!",
-  "width": 400,
-  "height": 200,
-  "autoFontSize": true,
-  "ensStyle": true
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "image": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0i...",
-  "base64": "PHN2ZyB3aWR0aD0i...",
-  "format": "svg"
-}
-```
-
 ## Development
-
-The project is structured as a library with a demo implementation:
-
-- **Library**: Core text measurement and SVG generation functions in `src/`
-- **Demo**: Cloudflare Worker implementation in `demo/`
-
-### Library Development
 
 ```bash
 # Install dependencies
@@ -144,34 +111,6 @@ yarn install
 # - measureTextAccurate()
 # - calculateFontSize()
 # - initializeFont()
-```
-
-### Demo Worker Development
-
-```bash
-# Start development server for the demo worker
-yarn demo:dev
-
-# This runs the worker from demo/worker.js which:
-# - Serves the demo HTML interface at /
-# - Provides the API endpoint for image generation
-```
-
-### Deployment
-
-#### Deploy Demo Worker
-```bash
-# Deploy the demo worker to Cloudflare
-yarn demo:deploy
-
-# This deploys demo/worker.js as a Cloudflare Worker
-```
-
-#### Deploy Demo Pages (Optional)
-```bash
-# If you want to serve the demo HTML as static pages:
-# 1. Upload demo/index.html to any static hosting service
-# 2. Update the WORKER_URL in the HTML to point to your deployed worker
 ```
 
 ### Using as a Library
