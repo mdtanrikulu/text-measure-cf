@@ -41,15 +41,21 @@ export function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
   let hasComplexScripts = false;
   let ligatureCount = 0;
 
-  // Iterate through each character (handling surrogate pairs for emojis)
-  for (let i = 0; i < text.length; i++) {
-    let char = text[i];
-    let charCode = text.codePointAt(i);
+  // Use Intl.Segmenter to properly handle grapheme clusters (compound emojis, etc.)
+  let segments;
+  try {
+    const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    segments = [...segmenter.segment(text)];
+  } catch (error) {
+    // Fallback if Intl.Segmenter is not available
+    console.warn('Intl.Segmenter not available, using basic string iteration');
+    segments = [...text].map((char, index) => ({ segment: char, index }));
+  }
 
-    // Skip low surrogate if we're on a high surrogate
-    if (charCode > 0xFFFF) {
-      i++; // Skip the next character as it's part of this surrogate pair
-    }
+  // Iterate through each grapheme cluster
+  for (let i = 0; i < segments.length; i++) {
+    const char = segments[i].segment;
+    const charCode = char.codePointAt(0);
 
     let charWidth = charWidthDb[char];
 
@@ -58,8 +64,8 @@ export function measureTextFallback(text, fontSize = 48, fontFamily = 'Arial') {
       totalWidth += charWidth;
 
       // Check for common ligatures
-      if (i < text.length - 1) {
-        const nextChar = text[i + 1];
+      if (i < segments.length - 1) {
+        const nextChar = segments[i + 1].segment;
         const pair = char + nextChar;
         if (['fi', 'fl', 'ff', 'ffi', 'ffl'].includes(pair)) {
           ligatureCount++;
