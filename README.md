@@ -20,6 +20,8 @@ npm install adaptive-layout-composer
 
 ## Usage
 
+### Basic Usage
+
 ```javascript
 import { createDynamicSVGImage } from 'adaptive-layout-composer';
 
@@ -35,6 +37,34 @@ const svgData = await createDynamicSVGImage({
 // Convert to base64 for data URL
 const base64 = btoa(String.fromCharCode(...svgData));
 const dataUrl = `data:image/svg+xml;base64,${base64}`;
+```
+
+### Using Custom Fonts
+
+For more accurate text measurement and custom fonts in your SVG:
+
+```javascript
+import { initializeFont, createDynamicSVGImage } from 'adaptive-layout-composer';
+import myFont from './fonts/MyFont.ttf';
+
+// Load font for accurate text measurement (OpenType.js)
+await initializeFont(myFont); // ArrayBuffer, URL, or base64
+
+// Convert font to base64 for embedding in SVG
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+// Generate SVG with embedded custom font
+const svgData = await createDynamicSVGImage({
+  text: "Custom Font Text",
+  width: 400,
+  height: 200,
+  fontFamily: 'MyFont',
+  fontBase64: arrayBufferToBase64(myFont),
+  autoFontSize: true
+});
 ```
 
 ### API Reference
@@ -56,15 +86,19 @@ Generate an SVG image with the following options:
   ensStyle: true,                 // Use ENS-style layout with logo
   textX: 100,                     // Manual X position
   textY: 100,                     // Manual Y position
-  maxTextWidth: 200               // Maximum text width
+  maxTextWidth: 200,              // Maximum text width
+  fontFamily: 'sans-serif',       // Font family name (used for both embedded and system fonts)
+  fontBase64: 'base64data...'     // Optional: base64 font data to embed with fontFamily name
 }
 ```
 
 #### Other Functions
 
-- `measureTextAccurate(text, fontSize, fontFamily)` - Get accurate text measurements
-- `calculateFontSize(text, maxWidth, maxHeight, minSize, maxSize)` - Calculate optimal font size
-- `initializeFont()` - Initialize the embedded Satoshi font
+- `initializeFont(fontSource)` - Load a font for accurate text measurement
+  - Accepts: URL string, base64 string, ArrayBuffer, or Uint8Array
+  - Returns: OpenType font object or null
+- `measureTextAccurate(text, fontSize, fontFamily)` - Get accurate text measurements using loaded font
+- `calculateFontSize(text, maxWidth, maxHeight, minSize, maxSize)` - Calculate optimal font size to fit text
 
 ### Demo API Usage
 

@@ -1,5 +1,6 @@
-import { createDynamicSVGImage } from '../src/index.js';
+import { createDynamicSVGImage, initializeFont } from '../src/index.js';
 import { demoHTML } from './demo-content.js';
+import satoshiFont from '../assets/Satoshi-Bold.ttf';
 
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
@@ -9,6 +10,10 @@ function arrayBufferToBase64(buffer) {
   }
   return btoa(binary);
 }
+
+// Convert font to base64 for embedding in SVG
+const satoshiFontBase64 = arrayBufferToBase64(satoshiFont);
+console.log(`Satoshi font loaded: ${satoshiFontBase64.substring(0, 100)}... (${satoshiFontBase64.length} chars)`);
 
 export default {
   async fetch(request, env, ctx) {
@@ -99,6 +104,13 @@ curl -X POST http://localhost:8787 \\
           }
         }
       }
+
+      // Initialize Satoshi font for accurate text measurement
+      await initializeFont(satoshiFont);
+
+      // Add Satoshi font to options for embedding in SVG
+      options.fontFamily = options.fontFamily || 'Satoshi';
+      options.fontBase64 = satoshiFontBase64;
 
       const data = await createDynamicSVGImage(options);
       const base64Data = arrayBufferToBase64(data);

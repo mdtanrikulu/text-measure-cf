@@ -1,5 +1,4 @@
 import opentype from 'opentype.js';
-import { satoshiBoldBase64 } from './satoshi-font.js';
 import { measureTextFallback, getTextMeasurementStrategy, hasComplexEmojis } from './text-measurement.js';
 
 let loadedFonts = {
@@ -7,22 +6,61 @@ let loadedFonts = {
   fallbacks: {}
 };
 
-async function initializeFont() {
-  if (!loadedFonts.primary) {
-    try {
-      console.log('Loading Satoshi-Bold font for accurate text measurement...');
-
-      // Use embedded base64 font data
-      const buffer = Uint8Array.from(atob(satoshiBoldBase64), c => c.charCodeAt(0)).buffer;
-      loadedFonts.primary = opentype.parse(buffer);
-
-      console.log(`✅ Font loaded: ${loadedFonts.primary.names.fontFamily?.en || 'Unknown'}`);
-    } catch (error) {
-      console.warn('Failed to load Satoshi-Bold font, falling back to mathematical approximation:', error.message);
-      loadedFonts.primary = null;
-    }
+async function initializeFont(fontSource) {
+  // If font already loaded and no new source provided, return existing
+  if (loadedFonts.primary && !fontSource) {
+    return loadedFonts.primary;
   }
-  return loadedFonts.primary;
+
+  // If no font source provided, return null (use fallback measurement)
+  if (!fontSource) {
+    return null;
+  }
+
+  try {
+    let buffer;
+
+    // Detect input type and convert to ArrayBuffer
+    if (typeof fontSource === 'string') {
+      if (fontSource.startsWith('http://') || fontSource.startsWith('https://')) {
+        // URL - fetch the font
+        console.log(`Fetching font from URL: ${fontSource}`);
+        const response = await fetch(fontSource);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch font: ${response.status}`);
+        }
+        buffer = await response.arrayBuffer();
+      } else if (fontSource.startsWith('data:')) {
+        // Data URL - extract base64 part
+        console.log('Loading font from data URL');
+        const base64Data = fontSource.split(',')[1];
+        buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
+      } else {
+        // Assume raw base64 string
+        console.log('Loading font from base64 string');
+        buffer = Uint8Array.from(atob(fontSource), c => c.charCodeAt(0)).buffer;
+      }
+    } else if (fontSource instanceof ArrayBuffer) {
+      // Already an ArrayBuffer
+      console.log('Loading font from ArrayBuffer');
+      buffer = fontSource;
+    } else if (fontSource instanceof Uint8Array) {
+      // Uint8Array
+      console.log('Loading font from Uint8Array');
+      buffer = fontSource.buffer;
+    } else {
+      throw new Error('Unsupported font source type. Expected URL string, base64 string, ArrayBuffer, or Uint8Array');
+    }
+
+    loadedFonts.primary = opentype.parse(buffer);
+    console.log(`✅ Font loaded: ${loadedFonts.primary.names.fontFamily?.en || 'Unknown'}`);
+
+    return loadedFonts.primary;
+  } catch (error) {
+    console.warn('Failed to load font, falling back to mathematical approximation:', error.message);
+    loadedFonts.primary = null;
+    return null;
+  }
 }
 
 // Detect if text needs a specific font for accurate measurement
@@ -152,7 +190,9 @@ async function createDynamicSVGImage(options = {}) {
     maxTextWidth = null,
     autoFontSize = true,
     ensStyle = true, // Enable ens-style layout by default
-    maxFontSize = 68 // Maximum font size limit
+    maxFontSize = 68, // Maximum font size limit
+    fontFamily = 'sans-serif', // Font family name (used for both embedded and fallback)
+    fontBase64 = null // Optional: base64 font data to embed in SVG with fontFamily name
   } = options;
 
   // Calculate text area (leave substantial padding for international characters and emojis)
@@ -278,17 +318,17 @@ async function createDynamicSVGImage(options = {}) {
       text-anchor="${textAnchor}"
       filter="url(#dropShadow)">${text}</text>
     <defs>
-      <style type="text/css">
+      ${fontBase64 ? `<style type="text/css">
         @font-face {
-          font-family: "Satoshi";
+          font-family: "${fontFamily}";
           font-style: normal;
           font-weight: 600 900;
-          src: url(data:font/truetype;base64,${satoshiBoldBase64});
+          src: url(data:font/truetype;base64,${fontBase64});
         }
-      </style>
+      </style>` : ''}
       <style>
         text {
-          font-family: 'Satoshi', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
+          font-family: '${fontFamily}', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
           font-style: normal;
           font-variant-numeric: tabular-nums;
           font-weight: bold;

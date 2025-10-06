@@ -1,3 +1,8 @@
 name = "svg-text-generator-demo"
 main = "worker.js"
 compatibility_date = "2024-09-26"
+
+[[rules]]
+type = "Data"
+globs = ["**/*.ttf"]
+fallthrough = true
