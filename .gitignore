@@ -3,3 +3,7 @@
 .yarn
 .zed
 node_modules
+*.log
+dist/
+.env
+.DS_Store
